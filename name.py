@@ -1,8 +1,17 @@
 from nltk.corpus import wordnet
+from bs4 import BeautifulSoup
+import requests
+import sys
 
+
+def smaller(length, size):
+    if(length < size):
+        return length
+    else:
+        return size
 
 # Settings
-path = "C:\\Users\\wdavi\\PycharmProjects\\CompanyNamer\\words.txt"
+path = "/home/will/source/CompanyNamer/words.txt"
 num_synonyms = 5
 num_antonyms = 2
 
@@ -22,35 +31,45 @@ for line in x:
     result = [x.strip() for x in line.split(',')]
     word_list.extend(result)
 
+# Thesaurus web scraping
 thesaurus_list = []
 
-# Thesaurus
-for word in word_list:
-    antonyms = []
+print("Finding synonyms/antonyms...\n")
 
-    for syn in wordnet.synsets(word):
-        for lm in syn.lemmas():
-            if lm.antonyms():
-                antonyms.append(lm.antonyms()[0].name())
+thesaurus_progress = 0
+word_list_length = len(word_list)
 
-    synonyms = []
+for word in word_list:  
 
-    for syn in wordnet.synsets(word):
-        for lm in syn.lemmas():
-            synonyms.append(lm.name())
+    print('Adding snyonyms/antonyms for '+word+' ('+str(thesaurus_progress)+'/'+str(word_list_length)+')')
 
-    thesaurus_list.extend(synonyms[:num_synonyms])
-    thesaurus_list.extend(antonyms[:num_antonyms])
+    page = requests.get("http://thesaurus.com/browse/"+word)
+    results = BeautifulSoup(page.content, 'html.parser')
 
-thesaurus_list.extend(word_list)
 
-pm = []
+    results = results.find_all('ul', class_='css-1lc0dpe et6tpn80')
+   
+    thesaurus_progress+=1
 
-# Remove duplicates
-thesaurus_list = list(dict.fromkeys(thesaurus_list))
+    if len(results) < 2:
+        continue
+    
+    synonyms = results[0].find_all('a')
+    antonyms = results[1].find_all('a')
+    
+    for i in range(smaller(num_synonyms, len(synonyms))):
+        thesaurus_list.append(synonyms[i].contents[0])
 
-for line in thesaurus_list:
-    print(line)
+    for i in range(smaller(num_antonyms, len(antonyms))):
+        thesaurus_list.append(antonyms[i].contents[0])
+
+print(thesaurus_list)
+
+#Remove duplicates
+#thesaurus_list = list(dict.fromkeys(thesaurus_list))
+
+#for line in thesaurus_list:
+ #   print(line)
 
 # Run through portmandeau finder
 
